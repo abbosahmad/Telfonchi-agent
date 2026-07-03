@@ -35,6 +35,10 @@
                     <i data-lucide="settings"></i>
                     <span>Sozlamalar</span>
                 </button>
+                <button class="btn btn-secondary" id="admin-auth-btn" title="Admin panelga kirish/chiqish">
+                    <i data-lucide="lock" id="admin-lock-icon"></i>
+                    <span id="admin-auth-btn-text">Admin Kirish</span>
+                </button>
             </div>
         </header>
 
@@ -156,6 +160,30 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div class="modal-overlay" id="auth-modal">
+        <div class="modal-card" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2><i data-lucide="lock"></i> Admin Tizimiga Kirish</h2>
+                <button class="btn-icon" id="close-auth-btn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="auth-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="admin-password-input">Parol</label>
+                        <input type="password" id="admin-password-input" required placeholder="Admin parolini kiriting (default: admin123)" autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-auth-btn">Bekor qilish</button>
+                    <button type="submit" class="btn btn-primary">Kirish</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Settings Modal -->

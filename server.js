@@ -33,6 +33,27 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Admin authentication middleware
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+function adminAuth(req, res, next) {
+    const password = req.headers['x-admin-password'];
+    if (!password || password !== ADMIN_PASSWORD) {
+        return res.status(401).json({ error: 'Ruxsat berilmagan. Admin parol xato.' });
+    }
+    next();
+}
+
+// API Endpoint for verifying Admin Password
+app.post('/api/auth/verify', (req, res) => {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ error: 'Admin paroli noto\'g\'ri!' });
+    }
+});
+
 // API Endpoints for Inventory
 app.get('/api/inventory', async (req, res) => {
     try {
@@ -43,7 +64,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-app.post('/api/inventory/add', async (req, res) => {
+app.post('/api/inventory/add', adminAuth, async (req, res) => {
     const { name, price, stock } = req.body;
     if (!name || isNaN(price) || isNaN(stock)) {
         return res.status(400).json({ error: 'Noto\'g\'ri ma\'lumotlar.' });
@@ -57,7 +78,7 @@ app.post('/api/inventory/add', async (req, res) => {
     }
 });
 
-app.post('/api/inventory/edit', async (req, res) => {
+app.post('/api/inventory/edit', adminAuth, async (req, res) => {
     const { id, name, price, stock } = req.body;
     if (!id || !name || isNaN(price) || isNaN(stock)) {
         return res.status(400).json({ error: 'Noto\'g\'ri ma\'lumotlar.' });
@@ -70,7 +91,7 @@ app.post('/api/inventory/edit', async (req, res) => {
     }
 });
 
-app.post('/api/inventory/delete', async (req, res) => {
+app.post('/api/inventory/delete', adminAuth, async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: 'ID kiritilmagan.' });
     try {
@@ -81,7 +102,7 @@ app.post('/api/inventory/delete', async (req, res) => {
     }
 });
 
-app.post('/api/inventory/restock', async (req, res) => {
+app.post('/api/inventory/restock', adminAuth, async (req, res) => {
     const { id, count } = req.body;
     if (!id || isNaN(count)) return res.status(400).json({ error: 'Noto\'g\'ri parametrlar.' });
     try {
@@ -93,7 +114,7 @@ app.post('/api/inventory/restock', async (req, res) => {
 });
 
 // API Endpoints for Orders
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', adminAuth, async (req, res) => {
     try {
         const rows = await dbQuery.all('SELECT * FROM orders ORDER BY date DESC');
         res.json(rows);
@@ -156,7 +177,15 @@ app.post('/api/orders/place', async (req, res) => {
     }
 });
 
-// NOTE: /api/orders/clear endpoint removed — requires admin auth panel for safety
+// Clear orders — protected with adminAuth
+app.post('/api/orders/clear', adminAuth, async (req, res) => {
+    try {
+        await dbQuery.run('DELETE FROM orders');
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 const { getAIResponse } = require('./ai');
 
