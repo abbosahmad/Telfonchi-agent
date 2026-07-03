@@ -11,210 +11,360 @@ if (!token) {
 
 // Create the bot
 const bot = new TelegramBot(token, { polling: true });
-console.log('Telegram bot is listening...');
+console.log('Telegram bot is listening (enhanced with inline buttons)...');
 
-// Keep track of sessions for simulation mode
+// Sessions & histories
 const sessions = {};
-// Keep track of chat history for DeepSeek mode
 const botHistories = {};
 
-// Handle incoming messages
+// Helper: Start/Main Menu markup
+function getMainMenuMarkup() {
+    return {
+        inline_keyboard: [
+            [
+                { text: "🛍 Telefonlar", callback_data: "list_inventory" },
+                { text: "📋 Yordam", callback_data: "help_info" }
+            ],
+            [
+                { text: "👤 Admin bilan bog'lanish", url: "https://t.me/abboscoder" }
+            ]
+        ]
+    };
+}
+
+// Helper: Escape HTML
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Helper: Format Markdown to HTML for Telegram
+function formatMarkdownToTelegram(text) {
+    if (!text) return '';
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\*(.*?)\*/g, '<i>$1</i>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/^\s*[-*]\s+(.*)$/gm, '• $1');
+}
+
+// Send Main Menu
+async function sendMainMenu(chatId, text) {
+    await bot.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+        reply_markup: getMainMenuMarkup()
+    });
+}
+
+// Handle Incoming Messages
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    // Ignore empty/system messages
+    // Handled contact sharing
+    if (msg.contact && sessions[chatId] && sessions[chatId].step === 'collecting_phone') {
+        const phoneNumber = msg.contact.phone_number;
+        sessions[chatId].orderInProgress.phoneNumber = phoneNumber;
+        await showOrderConfirmation(chatId);
+        return;
+    }
+
     if (!text) return;
 
-    // Handle commands
-    if (text === '/start') {
+    // Initialize session if not exists
+    if (!sessions[chatId]) {
         sessions[chatId] = {
             step: 'shopping',
             orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
         };
+    }
+    if (!botHistories[chatId]) {
+        botHistories[chatId] = [];
+    }
+
+    const session = sessions[chatId];
+
+    // Global commands
+    if (text === '/start') {
+        session.step = 'shopping';
+        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
         botHistories[chatId] = [];
 
-        await bot.sendMessage(chatId,
+        await sendMainMenu(chatId, 
             `<b>Assalomu alaykum! SmartStore AI do'koniga xush kelibsiz!</b> 😊\n\n` +
-            `Men savdo yordamchisiman. Sizga telefon tanlash va buyurtma berishda yordamlashaman.\n\n` +
-            `🔍 <b>Sotuvda nimalar borligini bilish uchun:</b> "Qanday telefonlar bor?" deb yozing.\n` +
-            `🛒 <b>Buyurtma berish uchun:</b> istalgan telefon nomini yozing (masalan, "iPhone 15 Pro Max olmoqchiman").\n\n` +
-            `📋 /help — yordam\n` +
-            `❌ /cancel — joriy buyurtmani bekor qilish`,
-            { parse_mode: 'HTML' }
+            `Men savdo yordamchisi Malikaman. Sizga telefon tanlash va buyurtma berishda yordamlashaman.\n\n` +
+            `👇 Quyidagi tugmalarni tanlang yoki o'zingiz xohlagan savolni yozing:`
         );
         return;
     }
 
     if (text === '/help') {
-        await bot.sendMessage(chatId,
-            `<b>📖 Yordam</b>\n\n` +
-            `• <b>Mavjud telefonlar:</b> "Qanday telefonlar bor?" yozing\n` +
-            `• <b>Buyurtma:</b> Telefon nomini yozing va ko'rsatmalarni bajaring\n` +
-            `• <b>Bekor qilish:</b> /cancel yozing\n` +
-            `• <b>Qayta boshlash:</b> /start yozing\n\n` +
-            `Muammo bo'lsa: @abboscoder`,
-            { parse_mode: 'HTML' }
-        );
+        await sendHelpMessage(chatId);
         return;
     }
 
-    if (text === '/cancel') {
-        sessions[chatId] = {
-            step: 'shopping',
-            orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
-        };
+    if (text === '/cancel' || text === '❌ Bekor qilish') {
+        session.step = 'shopping';
+        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
         botHistories[chatId] = [];
-        await bot.sendMessage(chatId, '❌ Joriy buyurtma bekor qilindi. Yangi buyurtma uchun "/start" ni bosing.');
+        await bot.sendMessage(chatId, '❌ Buyurtma bekor qilindi.', {
+            reply_markup: { remove_keyboard: true }
+        });
+        await sendMainMenu(chatId, 'Bosh sahifa:');
         return;
     }
 
-    // Session mavjud bo'lmasa, avtomatik boshlash
-    if (!sessions[chatId]) {
-        sessions[chatId] = {
-            step: 'shopping',
-            orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
-        };
-    }
-    if (!botHistories[chatId]) {
-        botHistories[chatId] = [];
+    // Process structured flow step by step
+    if (session.step === 'collecting_name') {
+        session.orderInProgress.customerName = text.trim();
+        session.step = 'collecting_phone';
+        
+        await bot.sendMessage(chatId, 
+            `Rahmat, <b>${escapeHTML(text)}</b>. Endi bog'lanish uchun <b>telefon raqamingizni</b> yuboring.\n\n` +
+            `Quyidagi <b>"📱 Raqamni yuborish"</b> tugmasini bosib kontakt yuborishingiz yoki raqamingizni yozib yuborishingiz mumkin:`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                keyboard: [
+                    [{ text: "📱 Raqamni yuborish", request_contact: true }],
+                    [{ text: "❌ Bekor qilish" }]
+                ],
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        });
+        return;
     }
 
+    if (session.step === 'collecting_phone') {
+        if (text.trim().length < 7) {
+            await bot.sendMessage(chatId, 'Iltimos, telefon raqamingizni to\'g\'ri formatda yuboring!');
+            return;
+        }
+        session.orderInProgress.phoneNumber = text.trim();
+        await showOrderConfirmation(chatId);
+        return;
+    }
+
+    // Default step: Handle with DeepSeek AI
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (apiKey) {
-        await handleDeepSeekBot(chatId, text);
+        bot.sendChatAction(chatId, 'typing');
+        const history = botHistories[chatId];
+        const res = await getAIResponse(text, history);
+
+        if (res.reply) {
+            const tgMessage = formatMarkdownToTelegram(res.reply);
+            await bot.sendMessage(chatId, tgMessage, { parse_mode: 'HTML' });
+            history.push({ role: 'user', content: text });
+            history.push({ role: 'agent', content: res.reply });
+        } else {
+            console.error("DeepSeek empty or failed response:", res.error);
+            await handleSimulationBot(chatId, text);
+        }
     } else {
         await handleSimulationBot(chatId, text);
     }
 });
 
-// DEEPSEEK BOT ENGINE
-async function handleDeepSeekBot(chatId, text) {
-    // Send typing action
-    bot.sendChatAction(chatId, 'typing');
+// Handle Callback Queries (Inline Buttons)
+bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data;
 
-    if (!botHistories[chatId]) {
-        botHistories[chatId] = [];
-    }
-
-    const history = botHistories[chatId];
-    
-    // Call the shared ai.js getAIResponse
-    const res = await getAIResponse(text, history);
-    
-    if (res.reply) {
-        const tgMessage = formatMarkdownToTelegram(res.reply);
-        await bot.sendMessage(chatId, tgMessage, { parse_mode: 'HTML' });
-        
-        // Append turns to history
-        history.push({ role: 'user', content: text });
-        history.push({ role: 'agent', content: res.reply });
-    } else {
-        console.error("DeepSeek empty or failed response:", res.error);
-        // Fallback to simulation
-        await handleSimulationBot(chatId, text);
-    }
-}
-
-// SIMULATION ENGINE FOR TELEGRAM (Fallback if API fails/missing)
-async function handleSimulationBot(chatId, text) {
     if (!sessions[chatId]) {
         sessions[chatId] = {
             step: 'shopping',
             orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
         };
     }
+    const session = sessions[chatId];
 
+    await bot.answerCallbackQuery(query.id);
+
+    if (data === 'main_menu') {
+        session.step = 'shopping';
+        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
+        await sendMainMenu(chatId, 'Bosh menyu:');
+    } 
+    else if (data === 'help_info') {
+        await sendHelpMessage(chatId);
+    } 
+    else if (data === 'list_inventory') {
+        await sendInventoryList(chatId);
+    } 
+    else if (data.startsWith('buy_phone_')) {
+        const phoneId = data.replace('buy_phone_', '');
+        const phone = await dbQuery.get('SELECT * FROM inventory WHERE id = ?', [phoneId]);
+        
+        if (!phone) {
+            await bot.sendMessage(chatId, "⚠️ Mahsulot topilmadi.");
+            return;
+        }
+        if (phone.stock <= 0) {
+            await bot.sendMessage(chatId, `Kechirasiz, <b>${phone.name}</b> hozirda tugagan!`);
+            return;
+        }
+
+        session.step = 'collecting_name';
+        session.orderInProgress.phoneModel = phone.name;
+        
+        await bot.sendMessage(chatId, 
+            `Ajoyib tanlov! <b>${phone.name}</b> omborda bor.\n\n` +
+            `Buyurtmani rasmiylashtirish uchun <b>ismingizni</b> yozib yuboring:`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "cancel_order" }]]
+            }
+        });
+    } 
+    else if (data === 'confirm_order') {
+        const order = session.orderInProgress;
+        const res = await placeOrderDB(order.customerName, order.phoneModel, 1, order.phoneNumber);
+        
+        if (res.status === "success") {
+            await bot.sendMessage(chatId, 
+                `🎉 <b>Buyurtmangiz muvaffaqiyatli qabul qilindi!</b>\n\n` +
+                `• Buyurtma ID: <code>${res.order_id}</code>\n` +
+                `• Mahsulot: ${order.phoneModel}\n\n` +
+                `Tez orada operatorlarimiz bog'lanishadi. Rahmat!`, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
+                }
+            });
+        } else {
+            await bot.sendMessage(chatId, `❌ Buyurtmada xatolik: ${res.message}`, {
+                reply_markup: {
+                    inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
+                }
+            });
+        }
+        session.step = 'shopping';
+        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
+    } 
+    else if (data === 'cancel_order') {
+        session.step = 'shopping';
+        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
+        await bot.sendMessage(chatId, "❌ Buyurtma bekor qilindi.", {
+            reply_markup: {
+                inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
+            }
+        });
+    }
+});
+
+// Show Order Summary for Confirmation
+async function showOrderConfirmation(chatId) {
+    const session = sessions[chatId];
+    const order = session.orderInProgress;
+    session.step = 'confirming';
+
+    // Remove any reply keyboard
+    await bot.sendMessage(chatId, "Tasdiqlash oynasiga o'tilmoqda...", {
+        reply_markup: { remove_keyboard: true }
+    });
+
+    const summary = 
+        `🛒 <b>Buyurtma tafsilotlari:</b>\n\n` +
+        `• <b>Mijoz:</b> ${escapeHTML(order.customerName)}\n` +
+        `• <b>Telefon:</b> ${escapeHTML(order.phoneNumber)}\n` +
+        `• <b>Model:</b> ${order.phoneModel}\n` +
+        `• <b>Soni:</b> 1 ta\n\n` +
+        `Buyurtmani rasmiylashtirishni tasdiqlaysizmi?`;
+
+    await bot.sendMessage(chatId, summary, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: "✅ Tasdiqlash", callback_data: "confirm_order" },
+                    { text: "❌ Bekor qilish", callback_data: "cancel_order" }
+                ]
+            ]
+        }
+    });
+}
+
+// Send Help Info
+async function sendHelpMessage(chatId) {
+    await bot.sendMessage(chatId,
+        `<b>📖 Botdan foydalanish qo'llanmasi</b>\n\n` +
+        `• 🛍 <b>Telefonlar</b> tugmasi orqali ombordagi bor mahsulotlarni tanlashingiz mumkin.\n` +
+        `• 💬 <b>AI sotuvchi</b> bilan to'g'ridan-to'g'ri yozishib, savollar berishingiz, telefonlarni solishtirishingiz va buyurtma berishingiz mumkin.\n` +
+        `• Biron buyurtmani boshlasangiz, istalgan bosqichda <b>/cancel</b> deb yozib yoki <b>"❌ Bekor qilish"</b> tugmasini bosib bekor qilishingiz mumkin.`,
+        {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🛍 Telefonlarni ko'rish", callback_data: "list_inventory" }]]
+            }
+        }
+    );
+}
+
+// Send Inventory with Inline Buttons
+async function sendInventoryList(chatId) {
+    try {
+        const rows = await dbQuery.all('SELECT * FROM inventory');
+        const keyboard = rows.map(p => {
+            const status = p.stock > 0 ? `$${p.price.toLocaleString()} (${p.stock} ta bor)` : 'Tugagan ❌';
+            return [{ text: `${p.name} — ${status}`, callback_data: `buy_phone_${p.id}` }];
+        });
+        keyboard.push([{ text: "⬅️ Orqaga", callback_data: "main_menu" }]);
+
+        await bot.sendMessage(chatId, "<b>🛍 Ombordagi mavjud telefonlar:</b>\n\nBuyurtma qilish uchun telefonlardan birini tanlang:", {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: keyboard
+            }
+        });
+    } catch (err) {
+        await bot.sendMessage(chatId, "Ma'lumot olishda xatolik yuz berdi.");
+    }
+}
+
+// Rule-based simulation bot (Fallback)
+async function handleSimulationBot(chatId, text) {
     const session = sessions[chatId];
     const cleanedText = text.toLowerCase().trim();
     let reply = "";
 
-    // Cancel check
-    if (cleanedText.includes("bekor") || (cleanedText === "yo'q" && session.step === 'confirming')) {
-        session.step = 'shopping';
-        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
-        const phonesList = await getPhonesListText();
-        reply = "Xo'p, buyurtmangiz bekor qilindi. Qayta tanlashingiz mumkin.\n\nMavjud telefonlar:\n" + phonesList;
-        await bot.sendMessage(chatId, reply, { parse_mode: 'HTML' });
+    if (cleanedText.includes("qanday") || cleanedText.includes("nimalar") || cleanedText.includes("ro'yxat") || cleanedText.includes("bor") || cleanedText.includes("sotuvda")) {
+        await sendInventoryList(chatId);
         return;
     }
 
-    // State transitions
-    switch (session.step) {
-        case 'shopping':
-            if (cleanedText.includes("qanday") || cleanedText.includes("nimalar") || cleanedText.includes("ro'yxat") || cleanedText.includes("bor") || cleanedText.includes("sotuvda")) {
-                const list = await getPhonesListText();
-                reply = "Hozirda do'konimizda quyidagi telefonlar bor:\n\n" + list;
-            } else {
-                const matchedPhone = await findPhoneInDB(cleanedText);
-                if (matchedPhone) {
-                    if (matchedPhone.stock <= 0) {
-                        const list = await getPhonesListText();
-                        reply = `Kechirasiz, <b>${matchedPhone.name}</b> hozircha sotuvda qolmagan. Bor telefonlarni taklif qila olaman:\n\n` + list;
-                    } else {
-                        session.orderInProgress.phoneModel = matchedPhone.name;
-                        session.step = 'collecting_name';
-                        reply = `Ajoyib tanlov! <b>${matchedPhone.name}</b> omborda bor.\n\nBuyurtmani rasmiylashtirish uchun <b>ismingizni</b> yozib yuboring.`;
-                    }
-                } else {
-                    reply = "Kechirasiz, gapingizni unchalik tushunmadim. Ombordagi bor telefonlarni bilish uchun 'Qanday telefonlar bor?' deb yozing.";
+    const matchedPhone = await findPhoneInDB(cleanedText);
+    if (matchedPhone) {
+        if (matchedPhone.stock <= 0) {
+            reply = `Kechirasiz, <b>${matchedPhone.name}</b> hozirda sotuvda qolmagan.`;
+            await bot.sendMessage(chatId, reply);
+            await sendInventoryList(chatId);
+        } else {
+            session.step = 'collecting_name';
+            session.orderInProgress.phoneModel = matchedPhone.name;
+            await bot.sendMessage(chatId, 
+                `Ajoyib tanlov! <b>${matchedPhone.name}</b> omborda bor.\n\n` +
+                `Buyurtma berish uchun <b>ismingizni</b> yozib yuboring:`, {
+                reply_markup: {
+                    inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "cancel_order" }]]
                 }
-            }
-            break;
-
-        case 'collecting_name':
-            session.orderInProgress.customerName = text;
-            session.step = 'collecting_phone';
-            reply = `Rahmat, ${text}. Bog'lanishimiz uchun <b>telefon raqamingizni</b> kiriting.`;
-            break;
-
-        case 'collecting_phone':
-            session.orderInProgress.phoneNumber = text;
-            session.step = 'confirming';
-            
-            const order = session.orderInProgress;
-            reply = `🛒 <b>Buyurtma tafsilotlari:</b>\n\n` +
-                    `• <b>Mijoz:</b> ${escapeHTML(order.customerName)}\n` +
-                    `• <b>Telefon:</b> ${escapeHTML(order.phoneNumber)}\n` +
-                    `• <b>Model:</b> ${order.phoneModel}\n` +
-                    `• <b>Soni:</b> 1 ta\n\n` +
-                    `Buyurtmani rasmiylashtirishni tasdiqlaysizmi? (<b>Ha</b> / <b>Yo'q</b> deb javob bering)`;
-            break;
-
-        case 'confirming':
-            if (cleanedText === "ha" || cleanedText.includes("tasdiq") || cleanedText.includes("ok")) {
-                const order = session.orderInProgress;
-                const res = await placeOrderDB(order.customerName, order.phoneModel, 1, order.phoneNumber);
-                
-                if (res.status === "success") {
-                    reply = `🎉 <b>Buyurtmangiz qabul qilindi!</b>\n\nBuyurtma ID raqami: <code>${res.order_id}</code>. Yaqin orada xodimlarimiz siz bilan bog'lanishadi. Rahmat!`;
-                } else {
-                    reply = `Xatolik yuz berdi: ${res.message}`;
-                }
-                session.step = 'shopping';
-                session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
-            } else {
-                reply = "Iltimos, buyurtmani tasdiqlash uchun 'Ha' yoki bekor qilish uchun 'Yo'q' deb yozing.";
-            }
-            break;
-    }
-
-    await bot.sendMessage(chatId, reply, { parse_mode: 'HTML' });
-}
-
-// DATABASE UTILITIES FOR BOT
-async function getPhonesListText() {
-    try {
-        const rows = await dbQuery.all('SELECT * FROM inventory');
-        return rows.map(p => {
-            const stockText = p.stock > 0 ? `(${p.stock} ta bor)` : `<b>(tugagan)</b>`;
-            return `• <b>${p.name}</b> - $${p.price.toLocaleString()} ${stockText}`;
-        }).join('\n');
-    } catch (e) {
-        return "Xatolik yuz berdi.";
+            });
+        }
+    } else {
+        reply = "Kechirasiz, gapingizni tushunmadim. Ombordagi telefonlarni bilish uchun pastdagi <b>🛍 Telefonlar</b> tugmasini bosing yoki AI maslahatchi bilan gaplashish uchun istalgan savolni yozing.";
+        await bot.sendMessage(chatId, reply, {
+            parse_mode: 'HTML',
+            reply_markup: getMainMenuMarkup()
+        });
     }
 }
 
+// DB Helpers
 async function findPhoneInDB(text) {
     try {
         const rows = await dbQuery.all('SELECT * FROM inventory');
@@ -236,7 +386,6 @@ async function placeOrderDB(customerName, phoneModel, quantity, phoneNumber) {
             return { status: 'error', message: 'Omborda yetarli qoldiq yo\'q.' };
         }
 
-        // Update database
         await dbQuery.run('UPDATE inventory SET stock = stock - ? WHERE id = ?', [quantity, phone.id]);
         
         const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
@@ -254,25 +403,4 @@ async function placeOrderDB(customerName, phoneModel, quantity, phoneNumber) {
     } catch (e) {
         return { status: 'error', message: e.message };
     }
-}
-
-// Formatter helper
-function formatMarkdownToTelegram(text) {
-    if (!text) return '';
-    let formatted = text
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-        .replace(/\*(.*?)\*/g, '<i>$1</i>')
-        .replace(/`(.*?)`/g, '<code>$1</code>')
-        .replace(/^\s*[-*]\s+(.*)$/gm, '• $1');
-    return formatted;
-}
-
-function escapeHTML(str) {
-    if (!str) return '';
-    return str.toString()
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
 }
