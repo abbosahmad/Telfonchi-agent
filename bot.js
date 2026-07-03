@@ -26,6 +26,11 @@ bot.deleteWebHook()
         console.error('Error cleaning up webhook and commands:', err);
     });
 
+// Log polling conflicts or API errors in real-time
+bot.on('polling_error', (error) => {
+    console.error('Polling error:', error);
+});
+
 
 // Sessions & histories
 const sessions = {};

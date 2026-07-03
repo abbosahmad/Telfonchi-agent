@@ -172,6 +172,7 @@ function initUI() {
 function updateStatusBadge() {
     const badge = document.getElementById('status-badge');
     const text = document.getElementById('status-text');
+    if (!badge || !text) return;
     if (appSettings.engine === 'deepseek') {
         badge.className = 'mode-badge gemini-active';
         text.textContent = 'DeepSeek AI faol';
