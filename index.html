@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SmartStore - Aqlli Telefon Sotuvchi Agent</title>
+    <meta name="description" content="AI sotuvchi agent yordamida telefonlarni buyurtma qilish va boshqarish tizimi">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i data-lucide="smartphone"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>SmartStore AI</h1>
+                    <p>Avtomatlashtirilgan savdo va buyurtma tizimi</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <span class="mode-badge simulation" id="status-badge">
+                    <span class="pulse-dot"></span>
+                    <span id="status-text">Simulyatsiya rejimi</span>
+                </span>
+                <button class="btn btn-secondary" id="open-settings-btn" title="Sozlamalar">
+                    <i data-lucide="settings"></i>
+                    <span>Sozlamalar</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="app-grid">
+            <!-- Left Side: Chat Interface -->
+            <section class="chat-section" aria-label="Mijoz chat oynasi">
+                <div class="card chat-card">
+                    <div class="card-header">
+                        <div class="agent-info">
+                            <div class="agent-avatar">
+                                <i data-lucide="bot"></i>
+                            </div>
+                            <div>
+                                <h3>Malika (AI Agent)</h3>
+                                <p class="agent-status">Onlayn • Do'kon maslahatchisi</p>
+                            </div>
+                        </div>
+                        <button class="btn-icon" id="clear-chat-btn" title="Chatni tozalash">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="chat-messages" id="chat-messages">
+                        <!-- Messages will be injected by JavaScript -->
+                    </div>
+
+                    <div class="chat-suggestions">
+                        <button class="suggest-btn" data-text="Qanday telefonlar bor?">Sotuvda nimalar bor?</button>
+                        <button class="suggest-btn" data-text="iPhone 15 Pro Max sotib olmoqchiman">iPhone 15 Pro Max bormi?</button>
+                        <button class="suggest-btn" data-text="Menda savol bor edi">Savolim bor</button>
+                    </div>
+
+                    <form class="chat-input-area" id="chat-form">
+                        <input type="text" id="chat-input" placeholder="Xabaringizni yozing (masalan: iPhone bormi?)..." autocomplete="off" required>
+                        <button type="submit" class="btn btn-primary" id="send-btn">
+                            <span>Yuborish</span>
+                            <i data-lucide="send"></i>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Right Side: Dashboard / DB Manager -->
+            <section class="dashboard-section" aria-label="Tizim ma'lumotlar bazasi va buyurtmalar">
+                <div class="card dashboard-card">
+                    <div class="dashboard-tabs">
+                        <button class="tab-btn active" data-tab="inventory">
+                            <i data-lucide="database"></i>
+                            <span>Telefonlar Ombori</span>
+                        </button>
+                        <button class="tab-btn" data-tab="orders">
+                            <i data-lucide="shopping-bag"></i>
+                            <span>Buyurtmalar Ro'yxati</span>
+                            <span class="badge" id="orders-count">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Inventory Tab Content -->
+                    <div class="tab-content active" id="tab-inventory">
+                        <div class="tab-header">
+                            <div>
+                                <h3>Mahsulotlar Bazasi</h3>
+                                <p>Do'kondagi telefonlar qoldig'i va narxlari</p>
+                            </div>
+                            <button class="btn btn-sm btn-primary" id="add-product-btn">
+                                <i data-lucide="plus"></i>
+                                <span>Yangi telefon</span>
+                            </button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rasm/Model</th>
+                                        <th>Narxi</th>
+                                        <th>Qoldiq</th>
+                                        <th>Holat</th>
+                                        <th>Amallar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-list">
+                                    <!-- Inventory items will be injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Orders Tab Content -->
+                    <div class="tab-content" id="tab-orders">
+                        <div class="tab-header">
+                            <div>
+                                <h3>Qabul qilingan Buyurtmalar</h3>
+                                <p>AI agent tomonidan rasmiylashtirilgan buyurtmalar ro'yxati</p>
+                            </div>
+                            <button class="btn btn-sm btn-secondary" id="clear-orders-btn">
+                                <i data-lucide="x-circle"></i>
+                                <span>Barchasini tozalash</span>
+                            </button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Buyurtma ID</th>
+                                        <th>Mijoz</th>
+                                        <th>Telefon</th>
+                                        <th>Model / Soni</th>
+                                        <th>Jami Narxi</th>
+                                        <th>Sana</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders-list">
+                                    <!-- Orders will be injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2><i data-lucide="sliders"></i> Tizim Sozlamalari</h2>
+                <button class="btn-icon" id="close-settings-btn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="ai-engine-select">AI Agent Turi</label>
+                    <select id="ai-engine-select">
+                        <option value="simulated">Simulyatsiya (API kalitsiz ishlaydi)</option>
+                        <option value="gemini">Haqiqiy Gemini AI (API Key talab qilinadi)</option>
+                    </select>
+                    <p class="form-help">Simulyatsiya rejimi JS asosidagi sodda qoidalar bilan ishlaydi. Real AI esa Gemini modeli orqali ishlaydi.</p>
+                </div>
+
+                <div class="form-group" id="api-key-group" style="display: none;">
+                    <label for="api-key-input">Gemini API Kaliti</label>
+                    <input type="password" id="api-key-input" placeholder="AIzaSy...">
+                    <p class="form-help">API kalitingiz faqat brauzeringiz xotirasida (localStorage) saqlanadi va serverlarga yuborilmaydi. <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Bepul kalit olish</a></p>
+                </div>
+
+                <div class="form-group">
+                    <label>Boshqa Amallar</label>
+                    <div class="actions-row">
+                        <button class="btn btn-danger" id="reset-db-btn">
+                            <i data-lucide="refresh-cw"></i>
+                            <span>Baza ma'lumotlarini tiklash</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-settings-btn">Bekor qilish</button>
+                <button class="btn btn-primary" id="save-settings-btn">Saqlash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal-overlay" id="product-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="product-modal-title">Yangi telefon qo'shish</h2>
+                <button class="btn-icon" id="close-product-btn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="product-form">
+                <div class="modal-body">
+                    <input type="hidden" id="product-id">
+                    <div class="form-group">
+                        <label for="product-name">Model nomi</label>
+                        <input type="text" id="product-name" required placeholder="Masalan: iPhone 15 Pro Max">
+                    </div>
+                    <div class="form-group">
+                        <label for="product-price">Narxi ($)</label>
+                        <input type="number" id="product-price" required min="1" placeholder="1200">
+                    </div>
+                    <div class="form-group">
+                        <label for="product-stock">Qoldiq soni</label>
+                        <input type="number" id="product-stock" required min="0" placeholder="5">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-product-btn">Bekor qilish</button>
+                    <button type="submit" class="btn btn-primary">Saqlash</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast">
+        <span id="toast-message">Muvaffaqiyatli bajarildi!</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
