@@ -13,6 +13,20 @@ if (!token) {
 const bot = new TelegramBot(token, { polling: true });
 console.log('Telegram bot is listening (enhanced with inline buttons)...');
 
+// Clear old webhooks and commands to ensure polling works and menu is clean
+bot.deleteWebHook()
+    .then(() => {
+        console.log('Webhook deleted successfully. Polling is active.');
+        return bot.deleteMyCommands();
+    })
+    .then(() => {
+        console.log('Old bot commands deleted successfully.');
+    })
+    .catch(err => {
+        console.error('Error cleaning up webhook and commands:', err);
+    });
+
+
 // Sessions & histories
 const sessions = {};
 const botHistories = {};
