@@ -62,18 +62,26 @@ async function initDb() {
         `);
 
         const countRow = await dbQuery.get('SELECT COUNT(*) as count FROM inventory');
-        if (countRow.count === 0) {
+        if (countRow.count <= 5) {
+            await dbQuery.run('DELETE FROM inventory');
             const defaults = [
                 ['1', 'iPhone 15 Pro Max', 1200, 5],
-                ['2', 'Samsung Galaxy S24 Ultra', 1100, 3],
-                ['3', 'Xiaomi 14 Ultra', 900, 8],
-                ['4', 'Google Pixel 8 Pro', 800, 0],
-                ['5', 'OnePlus 12', 700, 4]
+                ['2', 'iPhone 15 Pro', 1000, 8],
+                ['3', 'Samsung Galaxy S24 Ultra', 1100, 4],
+                ['4', 'Samsung Galaxy A55', 400, 12],
+                ['5', 'Xiaomi 14 Ultra', 950, 6],
+                ['6', 'Redmi Note 13 Pro+', 350, 15],
+                ['7', 'Poco F6 Pro', 480, 10],
+                ['8', 'Google Pixel 8 Pro', 850, 3],
+                ['9', 'Google Pixel 8a', 500, 7],
+                ['10', 'OnePlus 12', 750, 5],
+                ['11', 'Realme GT 6', 550, 4],
+                ['12', 'Nothing Phone (2)', 600, 6]
             ];
             for (const item of defaults) {
                 await dbQuery.run('INSERT INTO inventory (id, name, price, stock) VALUES (?, ?, ?, ?)', item);
             }
-            console.log('Pre-populated default phone inventory.');
+            console.log('Pre-populated rich default phone inventory.');
         }
     } catch (err) {
         console.error('Error initializing tables:', err.message);
