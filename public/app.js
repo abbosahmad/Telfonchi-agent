@@ -408,6 +408,7 @@ function updateStatusBadge() {
 // Render inventory items in admin panel table
 function renderInventory() {
     const list = document.getElementById('inventory-list');
+    if (!list) return;
     list.innerHTML = '';
 
     inventory.forEach(phone => {
@@ -424,26 +425,11 @@ function renderInventory() {
                 </div>
             </td>
             <td><strong>$${phone.price.toLocaleString()}</strong></td>
-            <td>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span>${phone.stock} ta</span>
-                    <button class="btn btn-secondary btn-sm" onclick="quickRestock('${phone.id}', 5)" title="Zaxirani 5 taga to'ldirish">+5</button>
-                </div>
-            </td>
+            <td>${phone.stock} ta</td>
             <td>
                 <span class="status-pill ${isInStock ? 'instock' : 'outstock'}">
                     ${isInStock ? 'Bor' : 'Tugagan'}
                 </span>
-            </td>
-            <td>
-                <div style="display: flex; gap: 6px;">
-                    <button class="btn-icon btn-sm" onclick="editProduct('${phone.id}')" title="Tahrirlash">
-                        <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
-                    </button>
-                    <button class="btn-icon btn-sm btn-danger" onclick="deleteProduct('${phone.id}')" title="O'chirish">
-                        <i data-lucide="trash" style="width: 14px; height: 14px;"></i>
-                    </button>
-                </div>
             </td>
         `;
         list.appendChild(tr);
