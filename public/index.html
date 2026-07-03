@@ -171,16 +171,10 @@
                 <div class="form-group">
                     <label for="ai-engine-select">AI Agent Turi</label>
                     <select id="ai-engine-select">
-                        <option value="simulated">Simulyatsiya (API kalitsiz ishlaydi)</option>
-                        <option value="gemini">Haqiqiy Gemini AI (API Key talab qilinadi)</option>
+                        <option value="simulated">Simulyatsiya (Mahalliy qoidalar bilan)</option>
+                        <option value="deepseek">Haqiqiy DeepSeek AI (Server API orqali)</option>
                     </select>
-                    <p class="form-help">Simulyatsiya rejimi JS asosidagi sodda qoidalar bilan ishlaydi. Real AI esa Gemini modeli orqali ishlaydi.</p>
-                </div>
-
-                <div class="form-group" id="api-key-group" style="display: none;">
-                    <label for="api-key-input">Gemini API Kaliti</label>
-                    <input type="password" id="api-key-input" placeholder="AIzaSy...">
-                    <p class="form-help">API kalitingiz faqat brauzeringiz xotirasida (localStorage) saqlanadi va serverlarga yuborilmaydi. <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Bepul kalit olish</a></p>
+                    <p class="form-help">Simulyatsiya rejimi JS asosidagi sodda qoidalar bilan ishlaydi. DeepSeek esa serverdagi API orqali ishlaydi.</p>
                 </div>
 
                 <div class="form-group">
