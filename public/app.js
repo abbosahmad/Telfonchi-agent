@@ -389,7 +389,6 @@ async function placeOrderAPI(customerName, phoneModel, quantity, phoneNumber) {
         const res = await response.json();
         if (res.status === "success") {
             await fetchInventory();
-            await fetchOrders();
         }
         return res;
     } catch (e) {
@@ -503,9 +502,8 @@ async function callBackendAI(userText) {
             renderMessage(formatMarkdown(res.reply), 'agent');
             chatHistory.push({ role: 'agent', content: res.reply });
             
-            // Sync inventory and orders in case orders were placed
+            // Sync inventory in case orders were placed
             await fetchInventory();
-            await fetchOrders();
         } else {
             renderMessage(`⚠️ <strong>Xatolik:</strong> DeepSeek javob qaytarishda xatolik yuz berdi.`, 'agent');
         }
