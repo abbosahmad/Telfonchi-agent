@@ -35,10 +35,6 @@
                     <i data-lucide="settings"></i>
                     <span>Sozlamalar</span>
                 </button>
-                <button class="btn btn-secondary" id="admin-auth-btn" title="Admin panelga kirish/chiqish">
-                    <i data-lucide="lock" id="admin-lock-icon"></i>
-                    <span id="admin-auth-btn-text">Admin Kirish</span>
-                </button>
             </div>
         </header>
 
@@ -81,105 +77,10 @@
                     </form>
                 </div>
             </section>
-
-            <!-- Right Side: Dashboard / DB Manager -->
-            <section class="dashboard-section" aria-label="Tizim ma'lumotlar bazasi va buyurtmalar">
-                <div class="card dashboard-card">
-                    <div class="dashboard-tabs">
-                        <button class="tab-btn active" data-tab="inventory">
-                            <i data-lucide="database"></i>
-                            <span>Telefonlar Ombori</span>
-                        </button>
-                        <button class="tab-btn" data-tab="orders">
-                            <i data-lucide="shopping-bag"></i>
-                            <span>Buyurtmalar Ro'yxati</span>
-                            <span class="badge" id="orders-count">0</span>
-                        </button>
-                    </div>
-
-                    <!-- Inventory Tab Content -->
-                    <div class="tab-content active" id="tab-inventory">
-                        <div class="tab-header">
-                            <div>
-                                <h3>Mahsulotlar Bazasi</h3>
-                                <p>Do'kondagi telefonlar qoldig'i va narxlari</p>
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Rasm/Model</th>
-                                        <th>Narxi</th>
-                                        <th>Qoldiq</th>
-                                        <th>Holat</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="inventory-list">
-                                    <!-- Inventory items will be injected by JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Orders Tab Content -->
-                    <div class="tab-content" id="tab-orders">
-                        <div class="tab-header">
-                            <div>
-                                <h3>Qabul qilingan Buyurtmalar</h3>
-                                <p>AI agent tomonidan rasmiylashtirilgan buyurtmalar ro'yxati</p>
-                            </div>
-                            <button class="btn btn-sm btn-secondary" id="clear-orders-btn">
-                                <i data-lucide="x-circle"></i>
-                                <span>Barchasini tozalash</span>
-                            </button>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Buyurtma ID</th>
-                                        <th>Mijoz</th>
-                                        <th>Telefon</th>
-                                        <th>Model / Soni</th>
-                                        <th>Jami Narxi</th>
-                                        <th>Sana</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="orders-list">
-                                    <!-- Orders will be injected by JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </main>
     </div>
 
-    <!-- Admin Login Modal -->
-    <div class="modal-overlay" id="auth-modal">
-        <div class="modal-card" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2><i data-lucide="lock"></i> Admin Tizimiga Kirish</h2>
-                <button class="btn-icon" id="close-auth-btn">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-            <form id="auth-form">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="admin-password-input">Parol</label>
-                        <input type="password" id="admin-password-input" required placeholder="Admin parolini kiriting (default: admin123)" autocomplete="current-password">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="cancel-auth-btn">Bekor qilish</button>
-                    <button type="submit" class="btn btn-primary">Kirish</button>
-                </div>
-            </form>
-        </div>
-    </div>
+
 
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settings-modal">

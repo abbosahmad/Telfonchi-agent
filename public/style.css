@@ -185,15 +185,12 @@ body {
 /* Grid Layout */
 .app-grid {
     display: grid;
-    grid-template-columns: 1.1fr 1.3fr;
+    grid-template-columns: 1fr;
+    max-width: 850px;
+    margin: 0 auto;
+    width: 100%;
     gap: 24px;
     flex-grow: 1;
-}
-
-@media (max-width: 1024px) {
-    .app-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Card Styles */

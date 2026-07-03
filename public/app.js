@@ -79,9 +79,7 @@ function renderOrdersLocked() {
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
     loadSettings();
-    updateAdminUI();
     await fetchInventory();
-    await fetchOrders();
     initUI();
     lucide.createIcons();
     
@@ -109,76 +107,13 @@ async function fetchInventory() {
     try {
         const response = await fetch('/api/inventory');
         inventory = await response.json();
-        renderInventory();
     } catch (err) {
         console.error('Error fetching inventory:', err);
-        showToast("Serverdan ma'lumot yuklashda xatolik!");
     }
-}
-
-// Fetch Orders from API
-async function fetchOrders() {
-    if (!isAdminLoggedIn()) {
-        renderOrdersLocked();
-        return;
-    }
-    try {
-        const response = await fetch('/api/orders', {
-            headers: getAdminHeaders()
-        });
-        if (response.status === 401) {
-            localStorage.removeItem('ss_admin_password');
-            updateAdminUI();
-            renderOrdersLocked();
-            return;
-        }
-        orders = await response.json();
-        renderOrders();
-    } catch (err) {
-        console.error('Error fetching orders:', err);
-    }
-}
-
-// Reset Database to default
-async function resetDatabase() {
-    checkAdminOrPrompt(async () => {
-        if (confirm("Haqiqatan ham ma'lumotlar bazasini tozalab, orderslarni o'chirmoqchimisiz? (Telefon qoldiqlarini boshqarish o'zgaradi)")) {
-            try {
-                const response = await fetch('/api/orders/clear', { 
-                    method: 'POST',
-                    headers: getAdminHeaders()
-                });
-                if (response.status === 401) {
-                    showToast("Xatolik: Admin paroli noto'g'ri!");
-                    localStorage.removeItem('ss_admin_password');
-                    updateAdminUI();
-                    return;
-                }
-                await fetchOrders();
-                await fetchInventory();
-                showToast("Buyurtmalar tozalandi!");
-            } catch (e) {
-                showToast("Xatolik yuz berdi.");
-            }
-        }
-    });
 }
 
 // UI Initialization & Event Listeners
 function initUI() {
-    // Tab switching
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            btn.classList.add('active');
-            const tabId = btn.getAttribute('data-tab');
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-        });
-    });
-
     // Chat suggestions
     const suggestionBtns = document.querySelectorAll('.suggest-btn');
     suggestionBtns.forEach(btn => {
@@ -196,201 +131,69 @@ function initUI() {
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     const settingsModal = document.getElementById('settings-modal');
     const aiEngineSelect = document.getElementById('ai-engine-select');
-    const resetDbBtn = document.getElementById('reset-db-btn');
 
-    openSettingsBtn.addEventListener('click', () => {
-        aiEngineSelect.value = appSettings.engine || 'simulated';
-        settingsModal.classList.add('open');
-    });
-
-    const closeModal = () => settingsModal.classList.remove('open');
-    closeSettingsBtn.addEventListener('click', closeModal);
-    cancelSettingsBtn.addEventListener('click', closeModal);
-
-    saveSettingsBtn.addEventListener('click', () => {
-        appSettings.engine = aiEngineSelect.value;
-        saveSettings();
-        closeModal();
-        showToast("Sozlamalar saqlandi!");
-    });
-
-    resetDbBtn.addEventListener('click', resetDatabase);
-
-    // Admin Login Modal Handlers
-    const authForm = document.getElementById('auth-form');
-    const authModal = document.getElementById('auth-modal');
-    const closeAuthBtn = document.getElementById('close-auth-btn');
-    const cancelAuthBtn = document.getElementById('cancel-auth-btn');
-    const adminAuthBtn = document.getElementById('admin-auth-btn');
-
-    const closeAuthModal = () => authModal.classList.remove('open');
-    closeAuthBtn.addEventListener('click', closeAuthModal);
-    cancelAuthBtn.addEventListener('click', closeAuthModal);
-
-    authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const password = document.getElementById('admin-password-input').value;
-        try {
-            const response = await fetch('/api/auth/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
-            });
-            if (response.ok) {
-                localStorage.setItem('ss_admin_password', password);
-                closeAuthModal();
-                updateAdminUI();
-                showToast("Muvaffaqiyatli kirdingiz!");
-                await fetchOrders();
-                if (authCallback) {
-                    authCallback();
-                    authCallback = null;
-                }
-            } else {
-                showToast("Admin paroli noto'g'ri!");
-            }
-        } catch (err) {
-            showToast("Server bilan bog'lanishda xatolik!");
-        }
-    });
-
-    adminAuthBtn.addEventListener('click', () => {
-        if (isAdminLoggedIn()) {
-            localStorage.removeItem('ss_admin_password');
-            updateAdminUI();
-            fetchOrders();
-            showToast("Tizimdan chiqdingiz.");
-        } else {
-            triggerAuthModal();
-        }
-    });
-
-    // Add Product Modal
-    const addProductBtn = document.getElementById('add-product-btn');
-    const closeProductBtn = document.getElementById('close-product-btn');
-    const cancelProductBtn = document.getElementById('cancel-product-btn');
-    const productModal = document.getElementById('product-modal');
-    const productForm = document.getElementById('product-form');
-
-    addProductBtn.addEventListener('click', () => {
-        checkAdminOrPrompt(() => {
-            document.getElementById('product-modal-title').textContent = "Yangi telefon qo'shish";
-            document.getElementById('product-id').value = '';
-            productForm.reset();
-            productModal.classList.add('open');
+    if (openSettingsBtn) {
+        openSettingsBtn.addEventListener('click', () => {
+            aiEngineSelect.value = appSettings.engine || 'simulated';
+            settingsModal.classList.add('open');
         });
-    });
+    }
 
-    const closeProductModal = () => productModal.classList.remove('open');
-    closeProductBtn.addEventListener('click', closeProductModal);
-    cancelProductBtn.addEventListener('click', closeProductModal);
+    const closeModal = () => settingsModal && settingsModal.classList.remove('open');
+    if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeModal);
+    if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', closeModal);
 
-    productForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('product-id').value;
-        const name = document.getElementById('product-name').value.trim();
-        const price = parseInt(document.getElementById('product-price').value);
-        const stock = parseInt(document.getElementById('product-stock').value);
-
-        try {
-            if (id) {
-                // Edit
-                const response = await fetch('/api/inventory/edit', {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ id, name, price, stock })
-                });
-                if (response.status === 401) {
-                    showToast("Xatolik: Admin paroli noto'g'ri!");
-                    localStorage.removeItem('ss_admin_password');
-                    updateAdminUI();
-                    return;
-                }
-                showToast("Telefon ma'lumotlari tahrirlandi!");
-            } else {
-                // Add
-                const response = await fetch('/api/inventory/add', {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ name, price, stock })
-                });
-                if (response.status === 401) {
-                    showToast("Xatolik: Admin paroli noto'g'ri!");
-                    localStorage.removeItem('ss_admin_password');
-                    updateAdminUI();
-                    return;
-                }
-                showToast("Yangi telefon qo'shildi!");
-            }
-            await fetchInventory();
-            closeProductModal();
-        } catch (err) {
-            showToast("Amalni bajarishda xatolik!");
-        }
-    });
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+            appSettings.engine = aiEngineSelect.value;
+            saveSettings();
+            closeModal();
+            showToast("Sozlamalar saqlandi!");
+        });
+    }
 
     // Chat submit
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-input');
-    chatForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const messageText = chatInput.value.trim();
-        if (!messageText) return;
+    if (chatForm) {
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const messageText = chatInput.value.trim();
+            if (!messageText) return;
 
-        // Render user message
-        renderMessage(messageText, 'user');
-        chatInput.value = '';
+            // Render user message
+            renderMessage(messageText, 'user');
+            chatInput.value = '';
 
-        // Add to history
-        chatHistory.push({ role: 'user', content: messageText });
+            // Add to history
+            chatHistory.push({ role: 'user', content: messageText });
 
-        // Trigger AI Agent
-        handleAIResponse(messageText);
-    });
+            // Trigger AI Agent
+            handleAIResponse(messageText);
+        });
+    }
 
     // Clear chat
-    document.getElementById('clear-chat-btn').addEventListener('click', () => {
-        if (confirm("Chat yozishmalarini tozalashni xohlaysizmi?")) {
-            const chatMessages = document.getElementById('chat-messages');
-            chatMessages.innerHTML = '';
-            chatHistory = [];
-            simulationState = {
-                step: 'greeting',
-                orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
-            };
-            sendAgentMessage("Chat tozalandi. Sizga qanday yordam bera olaman?");
-        }
-    });
-
-    // Clear orders
-    document.getElementById('clear-orders-btn').addEventListener('click', async () => {
-        checkAdminOrPrompt(async () => {
-            if (confirm("Barcha qabul qilingan buyurtmalarni o'chirib tashlamoqchimisiz?")) {
-                try {
-                    const response = await fetch('/api/orders/clear', { 
-                        method: 'POST',
-                        headers: getAdminHeaders()
-                    });
-                    if (response.status === 401) {
-                        showToast("Xatolik: Admin paroli noto'g'ri!");
-                        localStorage.removeItem('ss_admin_password');
-                        updateAdminUI();
-                        return;
-                    }
-                    await fetchOrders();
-                    showToast("Barcha buyurtmalar o'chirildi!");
-                } catch (e) {
-                    showToast("Xatolik yuz berdi.");
-                }
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    if (clearChatBtn) {
+        clearChatBtn.addEventListener('click', () => {
+            if (confirm("Chat yozishmalarini tozalashni xohlaysizmi?")) {
+                const chatMessages = document.getElementById('chat-messages');
+                chatMessages.innerHTML = '';
+                chatHistory = [];
+                simulationState = {
+                    step: 'greeting',
+                    orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
+                };
+                sendAgentMessage("Chat tozalandi. Sizga qanday yordam bera olaman?");
             }
         });
-    });
+    }
 
-    // Periodically sync orders and inventory (every 5 seconds) to catch Telegram orders in real-time!
+    // Periodically sync inventory (every 10 seconds)
     setInterval(async () => {
         await fetchInventory();
-        await fetchOrders();
-    }, 5000);
+    }, 10000);
 }
 
 function updateStatusBadge() {
