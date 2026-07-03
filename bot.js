@@ -40,7 +40,7 @@ function getMainMenuMarkup() {
                 { text: "📋 Yordam", callback_data: "help_info" }
             ],
             [
-                { text: "👤 Admin bilan bog'lanish", url: "https://t.me/abboscoder" }
+                { text: "👤 Admin bilan bog'lanish", url: "https://t.me/abbosa" }
             ]
         ]
     };
