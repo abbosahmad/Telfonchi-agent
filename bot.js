@@ -193,89 +193,101 @@ bot.on('message', async (msg) => {
 
 // Handle Callback Queries (Inline Buttons)
 bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const data = query.data;
-    console.log(`[Telegram Callback] ChatId: ${chatId}, Username: ${query.from?.username || 'none'}, Data: ${data}`);
-
-    if (!sessions[chatId]) {
-        sessions[chatId] = {
-            step: 'shopping',
-            orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
-        };
-    }
-    const session = sessions[chatId];
-
-    await bot.answerCallbackQuery(query.id);
-
-    if (data === 'main_menu') {
-        session.step = 'shopping';
-        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
-        await sendMainMenu(chatId, 'Bosh menyu:');
-    } 
-    else if (data === 'help_info') {
-        await sendHelpMessage(chatId);
-    } 
-    else if (data === 'list_inventory') {
-        await sendInventoryList(chatId);
-    } 
-    else if (data.startsWith('buy_phone_')) {
-        const phoneId = data.replace('buy_phone_', '');
-        const phone = await dbQuery.get('SELECT * FROM inventory WHERE id = ?', [phoneId]);
+    try {
+        console.log(`[Raw Callback] Received:`, JSON.stringify(query));
         
-        if (!phone) {
-            await bot.sendMessage(chatId, "⚠️ Mahsulot topilmadi.");
-            return;
-        }
-        if (phone.stock <= 0) {
-            await bot.sendMessage(chatId, `Kechirasiz, <b>${phone.name}</b> hozirda tugagan!`);
+        if (!query.message || !query.message.chat) {
+            console.error("Callback query message or chat is missing.");
+            await bot.answerCallbackQuery(query.id);
             return;
         }
 
-        session.step = 'collecting_name';
-        session.orderInProgress.phoneModel = phone.name;
-        
-        await bot.sendMessage(chatId, 
-            `Ajoyib tanlov! <b>${phone.name}</b> omborda bor.\n\n` +
-            `Buyurtmani rasmiylashtirish uchun <b>ismingizni</b> yozib yuboring:`, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "cancel_order" }]]
+        const chatId = query.message.chat.id;
+        const data = query.data;
+        console.log(`[Telegram Callback] ChatId: ${chatId}, Username: ${query.from?.username || 'none'}, Data: ${data}`);
+
+        if (!sessions[chatId]) {
+            sessions[chatId] = {
+                step: 'shopping',
+                orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
+            };
+        }
+        const session = sessions[chatId];
+
+        await bot.answerCallbackQuery(query.id);
+
+        if (data === 'main_menu') {
+            session.step = 'shopping';
+            session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
+            await sendMainMenu(chatId, 'Bosh menyu:');
+        } 
+        else if (data === 'help_info') {
+            await sendHelpMessage(chatId);
+        } 
+        else if (data === 'list_inventory') {
+            await sendInventoryList(chatId);
+        } 
+        else if (data.startsWith('buy_phone_')) {
+            const phoneId = data.replace('buy_phone_', '');
+            const phone = await dbQuery.get('SELECT * FROM inventory WHERE id = ?', [phoneId]);
+            
+            if (!phone) {
+                await bot.sendMessage(chatId, "⚠️ Mahsulot topilmadi.");
+                return;
             }
-        });
-    } 
-    else if (data === 'confirm_order') {
-        const order = session.orderInProgress;
-        const res = await placeOrderDB(order.customerName, order.phoneModel, 1, order.phoneNumber);
-        
-        if (res.status === "success") {
+            if (phone.stock <= 0) {
+                await bot.sendMessage(chatId, `Kechirasiz, <b>${phone.name}</b> hozirda tugagan!`);
+                return;
+            }
+
+            session.step = 'collecting_name';
+            session.orderInProgress.phoneModel = phone.name;
+            
             await bot.sendMessage(chatId, 
-                `🎉 <b>Buyurtmangiz muvaffaqiyatli qabul qilindi!</b>\n\n` +
-                `• Buyurtma ID: <code>${res.order_id}</code>\n` +
-                `• Mahsulot: ${order.phoneModel}\n\n` +
-                `Tez orada operatorlarimiz bog'lanishadi. Rahmat!`, {
+                `Ajoyib tanlov! <b>${phone.name}</b> omborda bor.\n\n` +
+                `Buyurtmani rasmiylashtirish uchun <b>ismingizni</b> yozib yuboring:`, {
                 parse_mode: 'HTML',
                 reply_markup: {
-                    inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
+                    inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "cancel_order" }]]
                 }
             });
-        } else {
-            await bot.sendMessage(chatId, `❌ Buyurtmada xatolik: ${res.message}`, {
+        } 
+        else if (data === 'confirm_order') {
+            const order = session.orderInProgress;
+            const res = await placeOrderDB(order.customerName, order.phoneModel, 1, order.phoneNumber);
+            
+            if (res.status === "success") {
+                await bot.sendMessage(chatId, 
+                    `🎉 <b>Buyurtmangiz muvaffaqiyatli qabul qilindi!</b>\n\n` +
+                    `• Buyurtma ID: <code>${res.order_id}</code>\n` +
+                    `• Mahsulot: ${order.phoneModel}\n\n` +
+                    `Tez orada operatorlarimiz bog'lanishadi. Rahmat!`, {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
+                    }
+                });
+            } else {
+                await bot.sendMessage(chatId, `❌ Buyurtmada xatolik: ${res.message}`, {
+                    reply_markup: {
+                        inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
+                    }
+                });
+            }
+            session.step = 'shopping';
+            session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
+        } 
+        else if (data === 'cancel_order') {
+            session.step = 'shopping';
+            session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
+            await bot.sendMessage(chatId, "❌ Buyurtma bekor qilindi.", {
                 reply_markup: {
                     inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
                 }
             });
         }
-        session.step = 'shopping';
-        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
-    } 
-    else if (data === 'cancel_order') {
-        session.step = 'shopping';
-        session.orderInProgress = { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' };
-        await bot.sendMessage(chatId, "❌ Buyurtma bekor qilindi.", {
-            reply_markup: {
-                inline_keyboard: [[{ text: "🛍 Bosh sahifa", callback_data: "main_menu" }]]
-            }
-        });
+    } catch (err) {
+        console.error("Error in callback_query handler:", err);
     }
 });
 
