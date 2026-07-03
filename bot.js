@@ -79,6 +79,7 @@ async function sendMainMenu(chatId, text) {
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
+    console.log(`[Telegram Msg] ChatId: ${chatId}, Username: ${msg.from?.username || 'none'}, Text: ${text || '[No Text/Contact]'}`);
 
     // Handled contact sharing
     if (msg.contact && sessions[chatId] && sessions[chatId].step === 'collecting_phone') {
@@ -189,6 +190,7 @@ bot.on('message', async (msg) => {
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
+    console.log(`[Telegram Callback] ChatId: ${chatId}, Username: ${query.from?.username || 'none'}, Data: ${data}`);
 
     if (!sessions[chatId]) {
         sessions[chatId] = {
