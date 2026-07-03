@@ -188,6 +188,13 @@ app.post('/api/orders/clear', adminAuth, async (req, res) => {
 });
 
 const { getAIResponse } = require('./ai');
+const { bot } = require('./bot');
+
+// Webhook endpoint — Telegram sends all updates here
+app.post('/bot/webhook', (req, res) => {
+    res.sendStatus(200);
+    bot.processUpdate(req.body);
+});
 
 app.post('/api/chat', rateLimiter, async (req, res) => {
     const { message, history } = req.body;
@@ -220,10 +227,9 @@ app.use((err, req, res, next) => {
 // Start listening
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`Webhook endpoint: https://store.abboscoder.uz/bot/webhook`);
 });
 
-// Export dbQuery for Telegram Bot module to use same database
-module.exports = { dbQuery };
 
-// Initialize Telegram Bot
-require('./bot');
+// Export dbQuery for reference
+module.exports = { dbQuery };
