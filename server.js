@@ -7,8 +7,29 @@ const { dbQuery } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3005;
 
+// Simple in-memory rate limiter for /api/chat (max 20 req/min per IP)
+const chatRateLimit = {};
+function rateLimiter(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    if (!chatRateLimit[ip]) chatRateLimit[ip] = [];
+    chatRateLimit[ip] = chatRateLimit[ip].filter(t => now - t < 60000);
+    if (chatRateLimit[ip].length >= 20) {
+        return res.status(429).json({ error: 'So\'rov limiti oshdi. 1 daqiqadan keyin qayta urinib ko\'ring.' });
+    }
+    chatRateLimit[ip].push(now);
+    next();
+}
+
 // Middleware
-app.use(cors());
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
+// Security headers
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    next();
+});
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -83,8 +104,19 @@ app.get('/api/orders', async (req, res) => {
 
 app.post('/api/orders/place', async (req, res) => {
     const { customerName, phoneModel, quantity, phoneNumber } = req.body;
-    if (!customerName || !phoneModel || isNaN(quantity) || !phoneNumber) {
-        return res.status(400).json({ error: 'Barcha maydonlarni to\'ldirish shart.' });
+    // Input validation
+    if (!customerName || typeof customerName !== 'string' || customerName.trim().length < 2) {
+        return res.status(400).json({ error: 'Mijoz ismi noto\'g\'ri.' });
+    }
+    if (!phoneModel || typeof phoneModel !== 'string') {
+        return res.status(400).json({ error: 'Telefon modeli kiritilmadi.' });
+    }
+    if (!phoneNumber || typeof phoneNumber !== 'string' || phoneNumber.trim().length < 7) {
+        return res.status(400).json({ error: 'Telefon raqami noto\'g\'ri.' });
+    }
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty < 1 || qty > 100) {
+        return res.status(400).json({ error: 'Soni 1 dan 100 gacha bo\'lishi kerak.' });
     }
 
     try {
@@ -96,12 +128,12 @@ app.post('/api/orders/place', async (req, res) => {
         if (phone.stock <= 0) {
             return res.json({ status: 'error', message: `Kechirasiz, "${phone.name}" modelidan hozirda omborda qolmagan.` });
         }
-        if (phone.stock < quantity) {
+        if (phone.stock < qty) {
             return res.json({ status: 'error', message: `Kechirasiz, omborda yetarli miqdorda "${phone.name}" yo\'q. Hozirda bor: ${phone.stock} ta.` });
         }
 
         // Decrement stock
-        await dbQuery.run('UPDATE inventory SET stock = stock - ? WHERE id = ?', [quantity, phone.id]);
+        await dbQuery.run('UPDATE inventory SET stock = stock - ? WHERE id = ?', [qty, phone.id]);
 
         // Place order
         const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
@@ -109,40 +141,51 @@ app.post('/api/orders/place', async (req, res) => {
 
         await dbQuery.run(
             'INSERT INTO orders (id, customerName, phoneModel, quantity, price, phoneNumber, date) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [orderId, customerName, phone.name, quantity, phone.price, phoneNumber, dateStr]
+            [orderId, customerName.trim(), phone.name, qty, phone.price, phoneNumber.trim(), dateStr]
         );
 
         res.json({
             status: 'success',
             order_id: orderId,
             message: 'Buyurtma saqlandi!',
-            order: { id: orderId, customerName, phoneModel: phone.name, quantity, price: phone.price, phoneNumber, date: dateStr }
+            order: { id: orderId, customerName: customerName.trim(), phoneModel: phone.name, quantity: qty, price: phone.price, phoneNumber: phoneNumber.trim(), date: dateStr }
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Order placement error:', err.message);
+        res.status(500).json({ error: 'Server xatosi yuz berdi.' });
     }
 });
 
-app.post('/api/orders/clear', async (req, res) => {
-    try {
-        await dbQuery.run('DELETE FROM orders');
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// NOTE: /api/orders/clear endpoint removed — requires admin auth panel for safety
 
 const { getAIResponse } = require('./ai');
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', rateLimiter, async (req, res) => {
     const { message, history } = req.body;
-    if (!message) return res.status(400).json({ error: 'Xabar kiritilmadi.' });
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return res.status(400).json({ error: 'Xabar kiritilmadi.' });
+    }
+    if (message.length > 2000) {
+        return res.status(400).json({ error: 'Xabar juda uzun (max 2000 belgi).' });
+    }
     try {
-        const result = await getAIResponse(message, history);
+        const result = await getAIResponse(message.trim(), Array.isArray(history) ? history.slice(-20) : []);
         res.json(result);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Chat API error:', err.message);
+        res.status(500).json({ error: 'AI javobi olishda xato yuz berdi.' });
     }
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Endpoint topilmadi.' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err.message);
+    res.status(500).json({ error: 'Server ichki xatosi.' });
 });
 
 // Start listening

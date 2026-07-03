@@ -34,14 +34,50 @@ bot.on('message', async (msg) => {
         };
         botHistories[chatId] = [];
 
-        await bot.sendMessage(chatId, 
+        await bot.sendMessage(chatId,
             `<b>Assalomu alaykum! SmartStore AI do'koniga xush kelibsiz!</b> 😊\n\n` +
             `Men savdo yordamchisiman. Sizga telefon tanlash va buyurtma berishda yordamlashaman.\n\n` +
             `🔍 <b>Sotuvda nimalar borligini bilish uchun:</b> "Qanday telefonlar bor?" deb yozing.\n` +
-            `🛒 <b>Buyurtma berish uchun:</b> istalgan telefon nomini yozing (masalan, "iPhone 15 Pro Max olmoqchiman").`,
+            `🛒 <b>Buyurtma berish uchun:</b> istalgan telefon nomini yozing (masalan, "iPhone 15 Pro Max olmoqchiman").\n\n` +
+            `📋 /help — yordam\n` +
+            `❌ /cancel — joriy buyurtmani bekor qilish`,
             { parse_mode: 'HTML' }
         );
         return;
+    }
+
+    if (text === '/help') {
+        await bot.sendMessage(chatId,
+            `<b>📖 Yordam</b>\n\n` +
+            `• <b>Mavjud telefonlar:</b> "Qanday telefonlar bor?" yozing\n` +
+            `• <b>Buyurtma:</b> Telefon nomini yozing va ko'rsatmalarni bajaring\n` +
+            `• <b>Bekor qilish:</b> /cancel yozing\n` +
+            `• <b>Qayta boshlash:</b> /start yozing\n\n` +
+            `Muammo bo'lsa: @abboscoder`,
+            { parse_mode: 'HTML' }
+        );
+        return;
+    }
+
+    if (text === '/cancel') {
+        sessions[chatId] = {
+            step: 'shopping',
+            orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
+        };
+        botHistories[chatId] = [];
+        await bot.sendMessage(chatId, '❌ Joriy buyurtma bekor qilindi. Yangi buyurtma uchun "/start" ni bosing.');
+        return;
+    }
+
+    // Session mavjud bo'lmasa, avtomatik boshlash
+    if (!sessions[chatId]) {
+        sessions[chatId] = {
+            step: 'shopping',
+            orderInProgress: { customerName: '', phoneModel: '', quantity: 1, phoneNumber: '' }
+        };
+    }
+    if (!botHistories[chatId]) {
+        botHistories[chatId] = [];
     }
 
     const apiKey = process.env.DEEPSEEK_API_KEY;
