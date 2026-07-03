@@ -107,6 +107,7 @@ async function fetchInventory() {
     try {
         const response = await fetch('/api/inventory');
         inventory = await response.json();
+        renderInventory();
     } catch (err) {
         console.error('Error fetching inventory:', err);
     }
@@ -123,34 +124,6 @@ function initUI() {
             document.getElementById('chat-form').dispatchEvent(new Event('submit'));
         });
     });
-
-    // Settings Modal
-    const openSettingsBtn = document.getElementById('open-settings-btn');
-    const closeSettingsBtn = document.getElementById('close-settings-btn');
-    const cancelSettingsBtn = document.getElementById('cancel-settings-btn');
-    const saveSettingsBtn = document.getElementById('save-settings-btn');
-    const settingsModal = document.getElementById('settings-modal');
-    const aiEngineSelect = document.getElementById('ai-engine-select');
-
-    if (openSettingsBtn) {
-        openSettingsBtn.addEventListener('click', () => {
-            aiEngineSelect.value = appSettings.engine || 'simulated';
-            settingsModal.classList.add('open');
-        });
-    }
-
-    const closeModal = () => settingsModal && settingsModal.classList.remove('open');
-    if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeModal);
-    if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', closeModal);
-
-    if (saveSettingsBtn) {
-        saveSettingsBtn.addEventListener('click', () => {
-            appSettings.engine = aiEngineSelect.value;
-            saveSettings();
-            closeModal();
-            showToast("Sozlamalar saqlandi!");
-        });
-    }
 
     // Chat submit
     const chatForm = document.getElementById('chat-form');

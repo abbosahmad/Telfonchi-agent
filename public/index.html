@@ -26,15 +26,6 @@
                     <p>Avtomatlashtirilgan savdo va buyurtma tizimi</p>
                 </div>
             </div>
-            <div class="header-actions">
-                <span class="mode-badge simulation" id="status-badge">
-                    <span class="pulse-dot"></span>
-                    <span id="status-text">Simulyatsiya rejimi</span>
-                </span>
-                <button class="btn btn-secondary" id="open-settings-btn" title="Sozlamalar">
-                    <i data-lucide="settings"></i>
-                    <span>Sozlamalar</span>
-                </button>
             </div>
         </header>
 
@@ -77,46 +68,39 @@
                     </form>
                 </div>
             </section>
+
+            <!-- Right Side: DB Manager (Read-only Phone list) -->
+            <section class="dashboard-section" aria-label="Tizim ma'lumotlar bazasi">
+                <div class="card dashboard-card" style="height: calc(100vh - 160px); display: flex; flex-direction: column;">
+                    <div class="tab-header" style="padding: 24px 24px 16px 24px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;">
+                        <div>
+                            <h3 style="font-size: 18px; font-weight: 600; color: var(--text-primary);">Telefonlar Ombori</h3>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Do'kondagi telefonlar qoldig'i va narxlari</p>
+                        </div>
+                    </div>
+                    <div class="table-container" style="flex-grow: 1; overflow-y: auto; padding: 16px 24px 24px 24px;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Rasm/Model</th>
+                                    <th>Narxi</th>
+                                    <th>Qoldiq</th>
+                                    <th>Holat</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-list">
+                                <!-- Inventory items will be injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
 
 
-    <!-- Settings Modal -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2><i data-lucide="sliders"></i> Tizim Sozlamalari</h2>
-                <button class="btn-icon" id="close-settings-btn">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="ai-engine-select">AI Agent Turi</label>
-                    <select id="ai-engine-select">
-                        <option value="simulated">Simulyatsiya (Mahalliy qoidalar bilan)</option>
-                        <option value="deepseek">Haqiqiy DeepSeek AI (Server API orqali)</option>
-                    </select>
-                    <p class="form-help">Simulyatsiya rejimi JS asosidagi sodda qoidalar bilan ishlaydi. DeepSeek esa serverdagi API orqali ishlaydi.</p>
-                </div>
 
-                <div class="form-group">
-                    <label>Boshqa Amallar</label>
-                    <div class="actions-row">
-                        <button class="btn btn-danger" id="reset-db-btn">
-                            <i data-lucide="refresh-cw"></i>
-                            <span>Baza ma'lumotlarini tiklash</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancel-settings-btn">Bekor qilish</button>
-                <button class="btn btn-primary" id="save-settings-btn">Saqlash</button>
-            </div>
-        </div>
-    </div>
 
 
     <!-- Notification Toast -->
